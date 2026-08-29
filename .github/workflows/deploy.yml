@@ -35,6 +35,23 @@ jobs:
           # 未配置时公共演示模式不启用，访客需自配 Key
           VITE_DEMO_PROXY: ${{ vars.VITE_DEMO_PROXY }}
 
+      - name: Verify build artifact
+        # 兜底自检：dist/index.html 必须引用 ./assets/ 产物，
+        # 而非未构建的 /src/main.tsx（后者会导致线上白屏）。
+        # 仅当误把源码当产物发布时此处失败，避免发坏站点。
+        run: |
+          set -e
+          if grep -q '/src/main.tsx' dist/index.html; then
+            echo "::error::dist/index.html 引用了 /src/main.tsx —— 构建产物异常，疑似发布了未构建源码"
+            exit 1
+          fi
+          if ! grep -q 'assets/' dist/index.html; then
+            echo "::error::dist/index.html 未引用 assets/ —— 构建可能未完成"
+            exit 1
+          fi
+          echo "构建产物自检通过："
+          grep -oE '<script[^>]*src="[^"]*"' dist/index.html
+
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3

@@ -40,6 +40,18 @@ Key 只保存在你的浏览器 localStorage 中，请求由浏览器直连服�
 - [部署到 GitHub Pages](docs/deploy-pages.md)——纯静态产物，推代码自动构建发布
 - [启用公共演示模式（Cloudflare Worker）](docs/deploy-worker.md)（可选）——让访客打开链接即用，无需自配 Key，Key 不暴露在前端
 
+### 线上访问地址
+
+- 若仓库部署为**项目页**（仓库自建、用 `<用户名>.github.io/<仓库名>/` 地址），
+  访问入口带仓库名子路径，如 `https://secnotes.github.io/travel/`（**注意末尾 `/`**）。
+- 若绑定了自定义域名且根域名已被**用户主页仓库**（`<用户名>.github.io`）占用，
+  本项目只能走子路径访问，如 `https://secnotes.cn/travel/`——
+  根域名 `https://secnotes.cn/` 仍由你的用户主页提供。
+  `vite.config.ts` 的 `base: './'` 已用相对路径，子路径下可正常加载资源。
+
+> 必须在仓库 **Settings → Pages → Source** 选 **"GitHub Actions"**（不是 "Deploy from a branch"），
+> 否则线上会发布未构建的源码导致白屏（详见部署文档「常见问题」）。
+
 ## 架构
 
 ```

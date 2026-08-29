@@ -46,5 +46,12 @@ git push -u origin main
 ## 常见问题
 
 - **构建失败**：检查 Node 版本，工作流用的是 Node 22
-- **页面白屏**：确认 Pages Source 选的是 "GitHub Actions" 而非 "Deploy from a branch"（后者会发布源码而非构建产物）
+- **页面白屏 / `GET /src/main.tsx 404`**：线上返回了未构建的源码 `index.html`。
+  确认仓库 **Settings → Pages → Source** 选的是 **"GitHub Actions"** 而非
+  "Deploy from a branch"——后者会把仓库根目录的源文件当静态站点直接发布，
+  跳过 `npm run build`，于是浏览器找不到仅 Vite dev server 才会服务的 `/src/main.tsx`。
+  （工作流里已加构建产物自检：发现 `dist/index.html` 仍引用 `/src/` 会直接失败。）
+- **根域名访问不到本项目**：若你的自定义域名（如 `secnotes.cn`）根路径已被
+  用户主页仓库（`<用户名>.github.io`）占用，本项目只能走**子路径**访问，
+  如 `https://secnotes.cn/travel/`（末尾 `/` 必须带）。`base: './'` 已兼容此情形。
 - **国内访问慢**：github.io 国内访问不稳定，同一套 `dist/` 也可部署到 Cloudflare Pages / Vercel / Gitee Pages，配置零改动
