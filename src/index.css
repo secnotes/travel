@@ -1,0 +1,156 @@
+@import "tailwindcss";
+
+/* ---------- 全局 ---------- */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-slate-100 text-slate-800 antialiased;
+}
+
+/* ---------- Leaflet ---------- */
+.leaflet-container {
+  @apply rounded-xl;
+  font-family: inherit;
+}
+
+/* 自定义 marker（避开 Leaflet 默认图标在打包器下的路径问题） */
+.day-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 9999px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.4);
+}
+
+/* ---------- 打印（导出 PDF）---------- */
+@media print {
+  body {
+    background: #fff;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-full {
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+
+  main {
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+}
+
+/* ---------- 滚动条 ---------- */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-300 rounded-full;
+}
+
+/* ---------- 夜间主题（.dark 挂在 <html>）----------
+   项目内统一使用浅色工具类体系（bg-white 卡片 / bg-slate-100 页面 /
+   text-slate-* 文字），此处对这些类做集中覆盖实现整体切换。 */
+.dark body {
+  background-color: #0f172a; /* slate-900 */
+  color: #e2e8f0; /* slate-200 */
+}
+
+/* 卡片 / 弹层 / 下拉 */
+.dark .bg-white {
+  background-color: #1e293b; /* slate-800 */
+}
+.dark .bg-white\/90 {
+  background-color: rgb(30 41 59 / 0.92);
+}
+
+/* 页面与次级背景 */
+.dark .bg-slate-100 {
+  background-color: #0f172a;
+}
+.dark .bg-slate-50 {
+  background-color: rgb(51 65 85 / 0.55);
+}
+.dark .bg-slate-50\/50 {
+  background-color: rgb(51 65 85 / 0.3);
+}
+
+/* 边框 */
+.dark .border-slate-200,
+.dark .border-slate-300 {
+  border-color: #475569; /* slate-600 */
+}
+.dark .border-slate-100 {
+  border-color: #334155; /* slate-700 */
+}
+.dark .border-amber-300,
+.dark .border-amber-200 {
+  border-color: rgb(146 64 14 / 0.55);
+}
+
+/* 文字 */
+.dark .text-slate-800 { color: #f1f5f9; }
+.dark .text-slate-700 { color: #e2e8f0; }
+.dark .text-slate-600 { color: #cbd5e1; }
+.dark .text-slate-500 { color: #94a3b8; }
+.dark .text-slate-400 { color: #64748b; }
+.dark .text-blue-700,
+.dark .text-blue-600 { color: #60a5fa; }
+.dark .text-amber-700,
+.dark .text-amber-600 { color: #fbbf24; }
+.dark .text-red-600 { color: #f87171; }
+.dark .text-green-600 { color: #4ade80; }
+
+/* 悬停态 */
+.dark .hover\:bg-slate-50:hover,
+.dark .hover\:bg-slate-100:hover {
+  background-color: rgb(51 65 85 / 0.8);
+}
+.dark .hover\:bg-blue-50:hover {
+  background-color: rgb(30 58 138 / 0.35);
+}
+
+/* 浅色信息底（提示框 / 选中态 / 徽章）*/
+.dark .bg-blue-50 { background-color: rgb(30 58 138 / 0.35); }
+.dark .bg-amber-50,
+.dark .bg-amber-100 { background-color: rgb(120 53 15 / 0.35); }
+.dark .bg-red-50 { background-color: rgb(127 29 29 / 0.35); }
+.dark .bg-green-50 { background-color: rgb(20 83 45 / 0.35); }
+
+/* 滚动条 */
+.dark ::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+
+/* 原生控件 */
+.dark input[type='date']::-webkit-calendar-picker-indicator {
+  filter: invert(0.8);
+}
+
+/* 地图：瓦片反色近似夜间底图，弹窗改深色 */
+.dark .leaflet-tile {
+  filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9);
+}
+.dark .leaflet-container {
+  background: #0f172a;
+}
+.dark .leaflet-popup-content-wrapper,
+.dark .leaflet-popup-tip {
+  background: #1e293b;
+  color: #e2e8f0;
+}
