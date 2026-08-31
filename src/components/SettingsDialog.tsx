@@ -10,6 +10,7 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }) {
   const setDemoProxyUrl = useAppStore((s) => s.setDemoProxyUrl)
   const [draft, setDraft] = useState(llm)
   const [demoDraft, setDemoDraft] = useState(demoProxyUrl)
+  const [showAdvanced, setShowAdvanced] = useState(false)
   const [testResult, setTestResult] = useState<string | null>(null)
   const [testing, setTesting] = useState(false)
 
@@ -81,18 +82,31 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }) {
             : '当前为公共演示模式：无需自配 Key，请求经公共代理转发（受来源域名限制，由站长额度承担）。如需更稳定/更高频使用，请填写自己的 Key。'}
         </p>
 
-        {/* 公共演示模式 */}
-        <div className="border border-slate-200 rounded-lg p-3 space-y-2">
-          <label className="block text-sm font-medium">🚀 公共演示模式代理地址</label>
-          <input
-            value={demoDraft}
-            onChange={(e) => setDemoDraft(e.target.value)}
-            placeholder="https://youxing-llm-proxy.你的子域.workers.dev/llm-proxy"
-            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <p className="text-xs text-slate-400">
-            留空则不启用公共模式。配了 Key 时优先用你自己的；未配 Key 且此处有地址时，自动走公共代理。
-          </p>
+        {/* 高级选项：公共演示代理（普通用户无需关心，站长调试用） */}
+        <div className="border border-slate-200 rounded-lg">
+          <button
+            type="button"
+            onClick={() => setShowAdvanced((v) => !v)}
+            className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg"
+          >
+            <span>高级选项</span>
+            <span className="text-xs text-slate-400">{showAdvanced ? '收起 ▲' : '展开 ▼'}</span>
+          </button>
+          {showAdvanced && (
+            <div className="px-3 pb-3 pt-1 space-y-2">
+              <label className="block text-sm font-medium">🚀 公共演示模式代理地址</label>
+              <input
+                value={demoDraft}
+                onChange={(e) => setDemoDraft(e.target.value)}
+                placeholder="https://youxing-llm-proxy.你的子域.workers.dev/llm-proxy"
+                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="text-xs text-slate-400">
+                一般无需填写（构建时已注入默认地址）。未配 Key 且此处有地址时走公共代理；配了 Key 时始终优先用你自己的。
+                此处修改为会话级覆盖，刷新页面后恢复默认，仅供临时调试。
+              </p>
+            </div>
+          )}
         </div>
 
         <div>

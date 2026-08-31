@@ -2,6 +2,8 @@
 
 默认情况下，访客需自配 API Key 才能使用。启用公共演示模式后，访客**打开链接即用**，无需任何配置——Key 由你部署的 Worker 注入，不暴露在前端。
 
+> **面向大陆访客部署必读**：`*.workers.dev` 域名在中国大陆被阻断，不开代理无法直连。需给 Worker 绑定自定义域名，见[第五节](#五大陆访问受限给-worker-绑自定义域名重要)。
+
 ## 原理
 
 ```
@@ -82,6 +84,8 @@ https://youxing-llm-proxy.<你的子域>.workers.dev
 | `VITE_DEMO_PROXY` | `https://youxing-llm-proxy.<你的子域>.workers.dev/llm-proxy` |
 
 > 这是 Variables（变量）而非 Secrets（密钥），因为 Worker 地址本身不需要保密。
+>
+> **值必须以 `https://` 开头**。少了协议头会被浏览器当成相对路径，POST 打到你自己的 Pages 静态站点上（返回 405）。若目标访客在大陆，请改用第五节的自定义域名地址。
 
 推一次代码或手动 Run workflow 重新构建 Pages，演示模式即生效。
 
@@ -90,6 +94,48 @@ https://youxing-llm-proxy.<你的子域>.workers.dev
 1. 用**无痕窗口**打开你的 Pages 地址（确保没有自己配过的 Key）
 2. 直接生成行程——如果能正常出结果，说明演示模式工作正常
 3. 在浏览器 F12 → Network 里看请求，应该发往 `<worker 地址>/llm-proxy`，且**不含 Authorization 头**（Key 在 Worker 侧注入）
+
+## 五、大陆访问受限：给 Worker 绑自定义域名（重要）
+
+`*.workers.dev` 域名在中国大陆被 DNS 污染 / SNI 阻断，**不开 VPN/代理无法直连**，表现为 `ERR_CONNECTION_TIMED_OUT`。
+
+一个常见的迷惑现象：站长自己调试一切正常（403、500 等错误都能收到），是因为本机代理开着；而大陆访客没有梯子，请求连 Worker 的门都摸不到——公共演示模式对他们就是坏的。
+
+判断方法：在**不开代理**的网络下执行：
+
+```bash
+curl -v https://youxing-llm-proxy.<你的子域>.workers.dev/
+```
+
+超时即命中此问题。
+
+### 解决：给 Worker 绑定你自己的域名
+
+自定义域名走 Cloudflare 边缘网络，通常可从大陆访问（免费版会把大陆流量路由到海外节点，能用但延迟偏高）。
+
+**前提**：域名（如 `secnotes.cn`）的 DNS 托管在 Cloudflare。若目前还在注册商 / 国内 DNS：
+
+1. 在 Cloudflare 添加站点，拿到分配的 nameserver
+2. 到域名注册商把 NS 记录改成 Cloudflare 的
+3. 原有 DNS 记录照搬到 Cloudflare；**指向 GitHub Pages 的记录保持「仅 DNS」（灰云）**，开橙云代理会导致 GitHub 证书校验失败
+
+**绑定步骤**：
+
+1. Cloudflare Dashboard → **Workers & Pages → 你的 Worker → Settings → Domains & Routes → Add → Custom domain**
+2. 填一个子域名，如 `llm.secnotes.cn`（Cloudflare 会自动创建 DNS 记录与证书）
+3. 仓库变量 `VITE_DEMO_PROXY` 改为 `https://llm.secnotes.cn/llm-proxy`，重新跑 Pages workflow
+4. Worker 的 `ALLOWED_ORIGIN` 不变（仍填你的站点域名）
+
+**验证**：在**不开代理**的网络下执行：
+
+```bash
+curl -v https://llm.secnotes.cn/llm-proxy \
+  -H "Content-Type: application/json" \
+  -H "Origin: https://secnotes.cn" \
+  -d '{"messages":[{"role":"user","content":"回复：连接成功"}]}'
+```
+
+> 若自定义域名在大陆仍然时好时坏（Cloudflare 免费版不保证大陆可达性），备选方案是把 `worker/llm-proxy.js` 的逻辑部署到国内可直连的平台（腾讯云函数 / 阿里云函数计算），代码基本原样可用。
 
 ## 部署顺序提醒
 
@@ -115,3 +161,6 @@ https://youxing-llm-proxy.<你的子域>.workers.dev
 | 报 401 | `LLM_API_KEY` 无效或 `LLM_BASE_URL`/`LLM_MODEL` 不匹配该服务商 |
 | 请求被蹭用 | 确认 `ALLOWED_ORIGIN` 已配置且不为空 |
 | 超出免费额度 | Cloudflare Workers 每天 10 万次，超出可在 Dashboard 设置用量告警 |
+| 生成时请求 405 | `VITE_DEMO_PROXY` 值缺 `https://` 协议头，被浏览器当相对路径拼到自己的 Pages 站点上（静态托管对 POST 回 405）。看 Network 里 405 请求的 URL：是自己站点域名即此问题，补全协议头并重新构建 |
+| CORS 报 Allow-Origin 值与 origin 不一致 | 多为用 `http://` 打开站点而 `ALLOWED_ORIGIN` 是 `https://`。在 GitHub Pages 开启 Enforce HTTPS，统一走 https |
+| `ERR_CONNECTION_TIMED_OUT` | `workers.dev` 域名在大陆被阻断。自己调试正常多半是本机开着代理；解决见第五节（绑自定义域名） |

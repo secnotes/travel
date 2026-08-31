@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useAppStore } from '../store'
 import { discoverDestinations } from '../services/discover'
+import { discoverShareUrl } from '../services/share'
 import { suggest } from '../services/resolver'
 import {
   BUDGET_TIER_LABELS,
@@ -29,6 +30,18 @@ export default function DiscoverPanel() {
   const setDiscoverStatus = useAppStore((s) => s.setDiscoverStatus)
 
   const [originFocused, setOriginFocused] = useState(false)
+  const [shareCopied, setShareCopied] = useState(false)
+
+  async function copyShareLink() {
+    if (!results) return
+    try {
+      await navigator.clipboard.writeText(discoverShareUrl(form, results))
+      setShareCopied(true)
+      setTimeout(() => setShareCopied(false), 2000)
+    } catch {
+      /* 剪贴板不可用时静默 */
+    }
+  }
 
   const originSuggestions = useMemo(
     () => (originFocused && form.origin ? suggest(form.origin, 5) : []),
@@ -221,9 +234,17 @@ export default function DiscoverPanel() {
       {/* 推荐结果 */}
       {results && (
         <div className="mt-6 space-y-3">
-          <h2 className="text-sm font-medium text-slate-500">
-            为你挑选了 {results.length} 个目的地（按推荐度排序）
-          </h2>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-sm font-medium text-slate-500">
+              为你挑选了 {results.length} 个目的地（按推荐度排序）
+            </h2>
+            <button
+              onClick={copyShareLink}
+              className="shrink-0 text-sm px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-blue-300 transition-colors"
+            >
+              {shareCopied ? '已复制链接 ✓' : '🔗 分享推荐'}
+            </button>
+          </div>
           {results.map((rec, i) => (
             <div
               key={`${rec.destination}-${i}`}

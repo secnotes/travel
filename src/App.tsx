@@ -1,7 +1,11 @@
 import { useEffect, useLayoutEffect, useState } from 'react'
 import { useAppStore } from './store'
 import { applyTheme } from './services/theme'
-import { planFromLocation, clearShareHash } from './services/share'
+import {
+  planFromLocation,
+  discoverFromLocation,
+  clearShareHash,
+} from './services/share'
 import PlanForm from './components/PlanForm'
 import DiscoverPanel from './components/DiscoverPanel'
 import ItineraryView from './components/ItineraryView'
@@ -21,15 +25,25 @@ export default function App() {
   const demoProxyUrl = useAppStore((s) => s.demoProxyUrl)
   const configured = Boolean(llm.apiKey) || Boolean(demoProxyUrl)
 
-  // 打开分享链接：从 URL hash 恢复行程
+  // 打开分享链接：从 URL hash 恢复行程或目的地推荐
   useEffect(() => {
     let active = true
-    planFromLocation().then((shared) => {
+    ;(async () => {
+      const shared = await planFromLocation()
       if (active && shared) {
         setPlan(shared)
         clearShareHash()
+        return
       }
-    })
+      const discover = await discoverFromLocation()
+      if (active && discover) {
+        const s = useAppStore.getState()
+        s.updateDiscoverForm(discover.f)
+        s.finishDiscover(discover.r)
+        s.setTab('discover')
+        clearShareHash()
+      }
+    })()
     return () => {
       active = false
     }

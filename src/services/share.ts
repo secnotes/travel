@@ -1,5 +1,6 @@
 import pako from 'pako'
-import type { ItineraryPlan, PlanActivity, PlanDay } from '../types'
+import type { ItineraryPlan, PlanActivity, PlanDay, DestinationRecommendation } from '../types'
+import type { DiscoverForm } from '../store'
 import { getAttraction } from '../data'
 import { addDays } from './resolver'
 
@@ -231,4 +232,54 @@ export function clearShareHash(): void {
   if (window.location.hash) {
     history.replaceState(null, '', window.location.pathname)
   }
+}
+
+// ============ 目的地发现分享 ============
+
+/**
+ * 发现结果分享链接格式：#/discover/v1<base64url>
+ * 内容 = 查询条件 + 推荐结果（体量小，直接整体压缩，无需精简字段）。
+ */
+
+interface DiscoverPayload {
+  f: DiscoverForm
+  r: DestinationRecommendation[]
+}
+
+export function encodeDiscoverShare(
+  form: DiscoverForm,
+  results: DestinationRecommendation[],
+): string {
+  const json = JSON.stringify({ f: form, r: results })
+  return 'v1' + bytesToBase64url(pako.deflate(json))
+}
+
+export async function decodeDiscoverShare(
+  encoded: string,
+): Promise<DiscoverPayload | null> {
+  try {
+    if (!encoded.startsWith('v1')) return null
+    const bytes = base64urlToBytes(encoded.slice(2))
+    const json = pako.inflate(bytes, { to: 'string' })
+    const payload = JSON.parse(json) as DiscoverPayload
+    if (!payload?.r?.length || !payload.f) return null
+    return payload
+  } catch {
+    return null
+  }
+}
+
+export function discoverShareUrl(
+  form: DiscoverForm,
+  results: DestinationRecommendation[],
+): string {
+  const { origin, pathname } = window.location
+  return `${origin}${pathname}#/discover/${encodeDiscoverShare(form, results)}`
+}
+
+/** 从当前 URL hash 恢复分享的发现结果（无后端分享） */
+export async function discoverFromLocation(): Promise<DiscoverPayload | null> {
+  const m = window.location.hash.match(/^#\/discover\/(.+)$/)
+  if (!m) return null
+  return decodeDiscoverShare(m[1])
 }
