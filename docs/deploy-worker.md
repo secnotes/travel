@@ -53,11 +53,12 @@ https://youxing-llm-proxy.<你的子域>.workers.dev
 4. 部署后会得到一个地址 `https://<你起的名字>.<你的子域>.workers.dev`，记下来
 5. 回到该 Worker 详情页 → 点 **Edit code**（编辑代码）
 6. 把编辑器里默认的代码**全部删除**，把本项目 `worker/llm-proxy.js` 的内容**完整粘贴**进去（纯 JavaScript，可直接粘贴，无需改写）
-7. 点右上角 **Deploy** 保存发布
+7. 点编辑器左上角文件列表旁的 **「+」（Add file / 新建文件）**，文件名填 `shortlink.js`，把本项目 `worker/shortlink.js` 的内容完整粘贴进去（短链接功能在这个文件，与入口同目录，两个文件缺一不可）
+8. 点右上角 **Deploy** 保存发布
 
 完整端点为 `<上面地址>/llm-proxy`。
 
-> 两种方式结果完全一样，区别只是命令行 vs 网页操作。后续若要改 Worker 代码：方式 A 跑 `wrangler deploy`，方式 B 重复第 5-7 步重新粘贴。
+> 两种方式结果完全一样，区别只是命令行 vs 网页操作。后续若要改 Worker 代码：方式 A 跑 `wrangler deploy`，方式 B 重复第 5-8 步重新粘贴（记得两个文件都要更新）。
 
 ## 二、配置环境变量
 
@@ -149,8 +150,28 @@ curl -v https://llm.secnotes.cn/llm-proxy \
 ### 启用步骤（绑定 KV）
 
 1. Cloudflare Dashboard 左侧 **Storage & Databases -> KV -> Create namespace**，命名如 `youxing-shortlinks`
-2. Worker 详情页 -> **Settings -> Variables -> KV Namespace Bindings -> Add binding**：变量名填 `SHORTLINKS`，选择刚创建的命名空间
-3. 完成，无需其他配置
+2. Worker 详情页 -> **Settings -> Variables -> 添加绑定（Add binding）-> 选「KV 命名空间」类型**：
+   - **变量名称**填 `SHORTLINKS`（必须一字不差，代码访问的是 `env.SHORTLINKS`）
+   - **KV 命名空间**下拉选择刚创建的命名空间（弹窗里展示的示例代码不用管）
+3. 保存后立即生效，无需重新部署代码
+
+> **常见配错**：把 `SHORTLINKS` 加成了上方「Variables and Secrets」列表里的普通
+> 文本变量。文本变量不是 KV 绑定，运行时会抛异常，症状为：点「分享短链接」后
+> 控制台报 `POST .../s 500` 且响应**没有 CORS 头**（前端自动降级为长链，但短链
+> 不可用）。正确状态：`SHORTLINKS` **只**出现在 KV Namespace Bindings 区块；
+> 若两处同名并存，删掉文本变量那个。新版 Worker 代码对这种配错会返回明确的
+> 中文错误提示（curl 可见）。
+
+配置完成后可验证：
+
+```bash
+curl -i -X POST https://<worker域名>/s \
+  -H "Content-Type: application/json" \
+  -H "Origin: <你的站点域名>" \
+  -d '{"url": "<站点上任意页面地址>"}'
+```
+
+返回 `{"short":"https://<worker域名>/s/xxxxxx"}` 即配置成功。
 
 wrangler 用户：`wrangler kv namespace create SHORTLINKS`，把返回的 id 填入 `worker/wrangler.toml` 中被注释的 `kv_namespaces` 段并取消注释。
 
@@ -187,3 +208,4 @@ wrangler 用户：`wrangler kv namespace create SHORTLINKS`，把返回的 id �
 | 生成时请求 405 | `VITE_DEMO_PROXY` 值缺 `https://` 协议头，被浏览器当相对路径拼到自己的 Pages 站点上（静态托管对 POST 回 405）。看 Network 里 405 请求的 URL：是自己站点域名即此问题，补全协议头并重新构建 |
 | CORS 报 Allow-Origin 值与 origin 不一致 | 多为用 `http://` 打开站点而 `ALLOWED_ORIGIN` 是 `https://`。在 GitHub Pages 开启 Enforce HTTPS，统一走 https |
 | `ERR_CONNECTION_TIMED_OUT` | `workers.dev` 域名在大陆被阻断。自己调试正常多半是本机开着代理；解决见第五节（绑自定义域名） |
+| 点「分享短链接」报 500 且无 CORS 头 | `SHORTLINKS` 被配成了普通文本变量而非 KV 命名空间绑定（详见第六节「常见配错」）。删除文本变量，改在添加绑定 -> KV 命名空间中重新绑定 |

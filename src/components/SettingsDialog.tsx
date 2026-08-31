@@ -63,8 +63,10 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }) {
   }
 
   function save() {
-    if (!draft.apiKey.trim() && draft.provider !== 'custom') {
-      if (!confirm('API Key 为空，保存后仍无法生成行程。确定保存？')) return
+    // 仅当保存后既无 Key 也无演示代理（确实无法生成行程）时才提醒，
+    // 避免只改短链服务等设置时被无关的 Key 提醒打扰
+    if (!draft.apiKey.trim() && !demoDraft.trim()) {
+      if (!confirm('API Key 为空且未配置公共演示代理，保存后将无法生成行程。确定保存？')) return
     }
     setLLM(draft)
     setDemoProxyUrl(demoDraft.trim())

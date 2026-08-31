@@ -1,16 +1,13 @@
 /**
- * 悠行 · LLM 代理 Worker
+ * 悠行 · LLM 代理 Worker（入口）
  *
  * 作用：把浏览器请求转发到 OpenAI 兼容的模型服务商，注入 API Key，
  * 让访客无需自配 Key 即可使用（公共演示模式）。
  *
  * 路由：
- *   GET  /s/<id>   短链接 302 跳转（浏览器地址栏直接访问，无 Origin 头）
- *   POST /s        创建短链接（body: {"url": 长链}，需通过来源校验）
+ *   GET  /s/<id>   短链接 302 跳转（实现在 shortlink.js）
+ *   POST /s        创建短链接（实现在 shortlink.js）
  *   其他 POST      LLM 代理（注入 Key 转发到模型服务商）
- *
- * 短链接依赖 KV 绑定 SHORTLINKS（可选）：
- * 未绑定时创建短链返回错误，其余功能不受影响；前端会自动降级为长链接。
  *
  * 部署后配置环境变量（Workers -> Settings -> Variables）：
  *   LLM_BASE_URL   如 https://api.deepseek.com/v1
@@ -24,7 +21,10 @@
  *
  * 本文件为纯 JavaScript（无类型标注），可直接粘贴进 Cloudflare
  * 网页编辑器（Edit code）部署，wrangler 命令行同样支持。
+ * 注意：短链功能在同目录 shortlink.js 中，网页部署时需两个文件一起粘贴。
  */
+
+import { createShort, redirectShort } from './shortlink.js'
 
 function endpoint(baseURL) {
   const base = baseURL.replace(/\/+$/, '')
@@ -33,96 +33,16 @@ function endpoint(baseURL) {
     : `${base}/chat/completions`
 }
 
-// ============ 短链接 ============
-
-const ID_ALPHABET =
-  'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-
-/** 随机短链 id（62^6 ≈ 568 亿组合，个人站点碰撞概率可忽略） */
-function randomId(len = 6) {
-  const bytes = new Uint8Array(len)
-  crypto.getRandomValues(bytes)
-  let id = ''
-  for (const b of bytes) id += ID_ALPHABET[b % ID_ALPHABET.length]
-  return id
-}
-
-/** 创建短链接：POST /s {"url": ...} -> {"short": ".../s/<id>"} */
-async function createShort(req, env, corsHeaders) {
-  const headers = { 'Content-Type': 'application/json', ...corsHeaders }
-  const fail = (error, status) =>
-    new Response(JSON.stringify({ error }), { status, headers })
-
-  if (!env.SHORTLINKS) {
-    return fail('短链服务未配置：请给 Worker 绑定 KV 命名空间 SHORTLINKS', 500)
-  }
-  if (!env.ALLOWED_ORIGIN) {
-    return fail('短链服务需要配置 ALLOWED_ORIGIN', 500)
-  }
-
-  let payload
-  try {
-    payload = await req.json()
-  } catch {
-    return fail('请求体不是合法 JSON', 400)
-  }
-  const target = payload && payload.url
-  if (typeof target !== 'string' || !/^https?:\/\//i.test(target)) {
-    return fail('缺少合法的 url 字段', 400)
-  }
-  // 只允许缩短本站链接：防止 Worker 被当作开放短链服务滥用（钓鱼短链等）
-  if (!target.startsWith(env.ALLOWED_ORIGIN)) {
-    return fail('仅允许缩短本站（ALLOWED_ORIGIN）的链接', 400)
-  }
-  if (target.length > 65536) {
-    return fail('链接过长', 400)
-  }
-
-  // 随机 id，极小概率碰撞时换一个重试
-  let id = ''
-  for (let i = 0; i < 3; i++) {
-    const candidate = randomId()
-    if (!(await env.SHORTLINKS.get(candidate))) {
-      id = candidate
-      break
-    }
-  }
-  if (!id) return fail('短链 id 分配失败，请重试', 500)
-
-  await env.SHORTLINKS.put(id, target)
-  const origin = new URL(req.url).origin
-  return new Response(JSON.stringify({ short: `${origin}/s/${id}` }), {
-    headers,
-  })
-}
-
-/** 短链跳转：GET /s/<id> -> 302 到长链（Location 保留 #hash，行程可正常还原） */
-async function redirectShort(env, id) {
-  if (!/^[A-Za-z0-9_-]{1,64}$/.test(id)) {
-    return new Response('Not Found', { status: 404 })
-  }
-  if (!env.SHORTLINKS) {
-    return new Response('短链服务未配置', { status: 500 })
-  }
-  const target = await env.SHORTLINKS.get(id)
-  if (!target) {
-    return new Response('短链接不存在或已失效', { status: 404 })
-  }
-  try {
-    return Response.redirect(target, 302)
-  } catch {
-    return new Response('短链接目标无效', { status: 404 })
-  }
-}
-
-// ============ 入口 ============
-
 export default {
   async fetch(req, env) {
     const path = new URL(req.url).pathname
 
-    // 短链跳转：浏览器地址栏直接访问（无 Origin 头），必须在来源校验之前处理
-    if (req.method === 'GET' && path.startsWith('/s/')) {
+    // 短链跳转：浏览器地址栏直接访问（无 Origin 头），必须在来源校验之前处理。
+    // HEAD 一并放行：部分聊天应用的链接预览爬虫用 HEAD 探测，若掉进来源校验会 403
+    if (
+      (req.method === 'GET' || req.method === 'HEAD') &&
+      path.startsWith('/s/')
+    ) {
       return redirectShort(env, path.slice(3))
     }
 
