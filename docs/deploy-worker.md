@@ -20,7 +20,7 @@ Cloudflare Worker（注入你的 Key + 校验来源域名）
 
 ## 一、部署 Worker
 
-`worker/` 目录已包含 Worker 代码（`llm-proxy.ts`）和配置（`wrangler.toml`）。部署有两种方式，任选其一。
+`worker/` 目录已包含 Worker 代码（`llm-proxy.js`，纯 JavaScript）和配置（`wrangler.toml`）。部署有两种方式，任选其一。
 
 ### 方式 A：命令行（wrangler）
 
@@ -50,7 +50,7 @@ https://youxing-llm-proxy.<你的子域>.workers.dev
 3. 给 Worker 起个名字（如 `youxing-llm-proxy`，全小写字母数字连字符）→ 点 **Deploy**
 4. 部署后会得到一个地址 `https://<你起的名字>.<你的子域>.workers.dev`，记下来
 5. 回到该 Worker 详情页 → 点 **Edit code**（编辑代码）
-6. 把编辑器里默认的代码**全部删除**，把本项目 `worker/llm-proxy.ts` 的内容**完整粘贴**进去
+6. 把编辑器里默认的代码**全部删除**，把本项目 `worker/llm-proxy.js` 的内容**完整粘贴**进去（纯 JavaScript，可直接粘贴，无需改写）
 7. 点右上角 **Deploy** 保存发布
 
 完整端点为 `<上面地址>/llm-proxy`。

@@ -1,5 +1,5 @@
 name = "youxing-llm-proxy"
-main = "llm-proxy.ts"
+main = "llm-proxy.js"
 compatibility_date = "2024-11-01"
 
 # 环境变量请勿写在此文件（会进仓库泄露）。

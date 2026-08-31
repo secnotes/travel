@@ -13,16 +13,12 @@
  * 前端调用：POST https://<worker>.workers.dev/llm-proxy
  *   - 浏览器无需带 Authorization（Key 在 Worker 侧注入）
  *   - Worker 校验 Origin 必须为 ALLOWED_ORIGIN，防止被他人蹭用
+ *
+ * 本文件为纯 JavaScript（无类型标注），可直接粘贴进 Cloudflare
+ * 网页编辑器（Edit code）部署，wrangler 命令行同样支持。
  */
 
-interface Env {
-  LLM_BASE_URL: string
-  LLM_API_KEY: string
-  LLM_MODEL: string
-  ALLOWED_ORIGIN: string
-}
-
-function endpoint(baseURL: string): string {
+function endpoint(baseURL) {
   const base = baseURL.replace(/\/+$/, '')
   return base.endsWith('/chat/completions')
     ? base
@@ -30,8 +26,8 @@ function endpoint(baseURL: string): string {
 }
 
 export default {
-  async fetch(req: Request, env: Env): Promise<Response> {
-    const corsHeaders: Record<string, string> = {
+  async fetch(req, env) {
+    const corsHeaders = {
       'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN,
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
@@ -70,7 +66,7 @@ export default {
     try {
       const body = await req.text()
       // 注入 model（访客发的请求里可能没有或带占位），覆盖为环境变量配置的模型
-      let payload: Record<string, unknown>
+      let payload
       try {
         payload = JSON.parse(body)
       } catch {
@@ -101,7 +97,7 @@ export default {
       })
     } catch (e) {
       return new Response(
-        JSON.stringify({ error: `上游请求失败：${(e as Error).message}` }),
+        JSON.stringify({ error: `上游请求失败：${e && e.message ? e.message : e}` }),
         { status: 502, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
       )
     }
