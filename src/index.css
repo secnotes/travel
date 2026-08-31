@@ -137,9 +137,20 @@ body {
   background: #475569;
 }
 
-/* 原生控件 */
-.dark input[type='date']::-webkit-calendar-picker-indicator {
-  filter: invert(0.8);
+/* 原生控件：按暗色方案渲染（输入框背景、下拉弹层、日期控件图标等
+   均由浏览器自适应，替代原先对日期控件单独反色的 hack） */
+.dark {
+  color-scheme: dark;
+}
+.dark select {
+  background-color: #1e293b; /* slate-800，与卡片底色一致 */
+  color: #e2e8f0;
+}
+/* 下拉弹出的选项列表：部分浏览器不跟随 color-scheme，显式指定 */
+.dark select option,
+.dark select optgroup {
+  background-color: #1e293b;
+  color: #e2e8f0;
 }
 
 /* 地图：瓦片反色近似夜间底图，弹窗改深色 */

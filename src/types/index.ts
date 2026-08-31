@@ -243,3 +243,8 @@ export interface RegionData {
   cities: CityCost[]
   climate: CityClimate[]
 }
+
+// ===== 短链接 =====
+
+/** 短链接服务商（详见 docs/shortlinks.md） */
+export type ShortlinkProvider = 'worker' | 'tinyurl' | 'isgd'

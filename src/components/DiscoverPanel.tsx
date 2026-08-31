@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useAppStore } from '../store'
 import { discoverDestinations } from '../services/discover'
 import { discoverShareUrl } from '../services/share'
+import { shortenUrl } from '../services/shortlink'
 import { suggest } from '../services/resolver'
 import {
   BUDGET_TIER_LABELS,
@@ -31,6 +32,8 @@ export default function DiscoverPanel() {
 
   const [originFocused, setOriginFocused] = useState(false)
   const [shareCopied, setShareCopied] = useState(false)
+  /** 短链按钮的反馈：null 无 / 'short' 已复制短链 / 'long' 短链不可用已降级 */
+  const [shortCopied, setShortCopied] = useState<null | 'short' | 'long'>(null)
 
   async function copyShareLink() {
     if (!results) return
@@ -38,6 +41,20 @@ export default function DiscoverPanel() {
       await navigator.clipboard.writeText(discoverShareUrl(form, results))
       setShareCopied(true)
       setTimeout(() => setShareCopied(false), 2000)
+    } catch {
+      /* 剪贴板不可用时静默 */
+    }
+  }
+
+  async function copyShortLink() {
+    if (!results) return
+    try {
+      const long = discoverShareUrl(form, results)
+      // 优先生成短链（自有 Worker）；不可用时降级为长链并明确告知
+      const short = await shortenUrl(long)
+      await navigator.clipboard.writeText(short ?? long)
+      setShortCopied(short ? 'short' : 'long')
+      setTimeout(() => setShortCopied(null), 2000)
     } catch {
       /* 剪贴板不可用时静默 */
     }
@@ -238,12 +255,25 @@ export default function DiscoverPanel() {
             <h2 className="text-sm font-medium text-slate-500">
               为你挑选了 {results.length} 个目的地（按推荐度排序）
             </h2>
-            <button
-              onClick={copyShareLink}
-              className="shrink-0 text-sm px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-blue-300 transition-colors"
-            >
-              {shareCopied ? '已复制链接 ✓' : '🔗 分享推荐'}
-            </button>
+            <div className="flex flex-col items-end gap-1.5 shrink-0">
+              <button
+                onClick={copyShareLink}
+                className="text-sm px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-blue-300 transition-colors"
+              >
+                {shareCopied ? '已复制链接 ✓' : '🔗 分享推荐'}
+              </button>
+              <button
+                onClick={copyShortLink}
+                title="生成更短的分享链接（需演示 Worker）；不可用时自动复制长链接"
+                className="text-sm px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-blue-300 transition-colors"
+              >
+                {shortCopied === 'short'
+                  ? '已复制短链 ✓'
+                  : shortCopied === 'long'
+                    ? '短链不可用，已复制长链 ✓'
+                    : '✂️ 分享短链接'}
+              </button>
+            </div>
           </div>
           {results.map((rec, i) => (
             <div

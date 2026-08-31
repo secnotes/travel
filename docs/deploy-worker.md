@@ -137,6 +137,29 @@ curl -v https://llm.secnotes.cn/llm-proxy \
 
 > 若自定义域名在大陆仍然时好时坏（Cloudflare 免费版不保证大陆可达性），备选方案是把 `worker/llm-proxy.js` 的逻辑部署到国内可直连的平台（腾讯云函数 / 阿里云函数计算），代码基本原样可用。
 
+## 六、短链接功能（可选，分享更友好）
+
+行程 / 推荐的分享链接很长（内容压缩编码在 URL hash 里）。Worker 内置了短链服务：
+
+- `POST /s`（body：`{"url": 长链}`）-> `{"short": "https://<worker域名>/s/<id>"}`
+- `GET /s/<id>` -> 302 跳回长链（Location 保留 `#hash`，打开后行程正常还原）
+
+前端行为：行程的「导出 / 分享」菜单与目的地发现的结果页均提供两个按钮--「分享链接」直接复制长链；「分享短链接」显式生成短链，未部署 KV、超时或失败时自动降级为复制长链接并明确告知。只配了长链按钮的站点功能完整不受影响。
+
+### 启用步骤（绑定 KV）
+
+1. Cloudflare Dashboard 左侧 **Storage & Databases -> KV -> Create namespace**，命名如 `youxing-shortlinks`
+2. Worker 详情页 -> **Settings -> Variables -> KV Namespace Bindings -> Add binding**：变量名填 `SHORTLINKS`，选择刚创建的命名空间
+3. 完成，无需其他配置
+
+wrangler 用户：`wrangler kv namespace create SHORTLINKS`，把返回的 id 填入 `worker/wrangler.toml` 中被注释的 `kv_namespaces` 段并取消注释。
+
+### 安全与限制
+
+- 短链只允许缩短 `ALLOWED_ORIGIN` 本站的链接，Worker 不会被当作开放短链服务滥用（钓鱼短链等）
+- KV 免费额度：每天 10 万次读 / 1000 次写入（即每天最多生成 1000 条短链），存储上限 1GB
+- 短链永久有效；删除单条短链可在 Dashboard 的 KV 界面按 id 删键
+
 ## 部署顺序提醒
 
 务必按此顺序，否则 Origin 校验会失败：

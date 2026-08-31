@@ -2,6 +2,14 @@ name = "youxing-llm-proxy"
 main = "llm-proxy.js"
 compatibility_date = "2024-11-01"
 
+# 短链接功能（可选）：创建 KV 命名空间后取消注释并填入 id
+#   wrangler kv namespace create SHORTLINKS
+# 网页部署的等效操作：Worker -> Settings -> Variables -> KV Namespace Bindings，
+#   变量名填 SHORTLINKS，选择创建好的命名空间
+# [[kv_namespaces]]
+# binding = "SHORTLINKS"
+# id = "<KV namespace ID>"
+
 # 环境变量请勿写在此文件（会进仓库泄露）。
 # 部署后在 Cloudflare Dashboard → Workers → Settings → Variables 配置：
 #   LLM_BASE_URL    服务商 baseURL，如 https://api.deepseek.com/v1

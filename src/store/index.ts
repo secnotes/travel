@@ -9,6 +9,7 @@ import type {
   LLMSettings,
   Pace,
   PlanRequest,
+  ShortlinkProvider,
   Theme,
 } from '../types'
 
@@ -88,6 +89,10 @@ interface AppState {
   demoProxyUrl: string
   setDemoProxyUrl: (url: string) => void
 
+  /** 短链接服务商（设置 -> 高级选项，详见 docs/shortlinks.md） */
+  shortlinkProvider: ShortlinkProvider
+  setShortlinkProvider: (p: ShortlinkProvider) => void
+
   // ---- 行程规划表单草稿 ----
   planDraft: PlanFormDraft
   updatePlanDraft: (patch: Partial<PlanFormDraft>) => void
@@ -158,6 +163,9 @@ export const useAppStore = create<AppState>()(
       // 构建时通过 VITE_DEMO_PROXY 注入公共 Worker 地址；运行时可手动改
       demoProxyUrl: import.meta.env.VITE_DEMO_PROXY ?? '',
       setDemoProxyUrl: (demoProxyUrl) => set({ demoProxyUrl }),
+
+      shortlinkProvider: 'worker',
+      setShortlinkProvider: (shortlinkProvider) => set({ shortlinkProvider }),
 
       planDraft: DEFAULT_PLAN_DRAFT,
       updatePlanDraft: (patch) =>
@@ -232,6 +240,7 @@ export const useAppStore = create<AppState>()(
       partialize: (s) => ({
         llm: s.llm,
         history: s.history,
+        shortlinkProvider: s.shortlinkProvider,
       }),
     },
   ),

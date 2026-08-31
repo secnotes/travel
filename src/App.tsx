@@ -5,6 +5,7 @@ import {
   planFromLocation,
   discoverFromLocation,
   clearShareHash,
+  requestFromPlan,
 } from './services/share'
 import PlanForm from './components/PlanForm'
 import DiscoverPanel from './components/DiscoverPanel'
@@ -31,6 +32,8 @@ export default function App() {
     ;(async () => {
       const shared = await planFromLocation()
       if (active && shared) {
+        // 分享链接不含原始请求：合成最小 request，保证「修改行程」与再次分享可用
+        useAppStore.setState({ request: requestFromPlan(shared) })
         setPlan(shared)
         clearShareHash()
         return

@@ -299,7 +299,11 @@ export default function PlanForm() {
             {history.slice(0, 6).map((h) => (
               <button
                 key={h.id}
-                onClick={() => setPlan(h.plan)}
+                onClick={() => {
+                  // 恢复 request 与 plan，否则「修改行程」因缺 request 无响应
+                  useAppStore.setState({ request: h.request })
+                  setPlan(h.plan)
+                }}
                 className="text-left bg-white border border-slate-200 rounded-xl p-4 hover:border-blue-300 hover:shadow-sm transition-all"
               >
                 <p className="font-medium text-sm">{h.title}</p>

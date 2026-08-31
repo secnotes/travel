@@ -2,14 +2,19 @@ import { useRef, useState } from 'react'
 import { useAppStore } from '../store'
 import { PROVIDER_PRESETS, getPreset } from '../llm/presets'
 import { chatCompletion } from '../llm/client'
+import { SHORTLINK_PROVIDERS } from '../services/shortlink'
+import type { ShortlinkProvider } from '../types'
 
 export default function SettingsDialog({ onClose }: { onClose: () => void }) {
   const llm = useAppStore((s) => s.llm)
   const setLLM = useAppStore((s) => s.setLLM)
   const demoProxyUrl = useAppStore((s) => s.demoProxyUrl)
   const setDemoProxyUrl = useAppStore((s) => s.setDemoProxyUrl)
+  const shortlinkProvider = useAppStore((s) => s.shortlinkProvider)
+  const setShortlinkProvider = useAppStore((s) => s.setShortlinkProvider)
   const [draft, setDraft] = useState(llm)
   const [demoDraft, setDemoDraft] = useState(demoProxyUrl)
+  const [shortlinkDraft, setShortlinkDraft] = useState<ShortlinkProvider>(shortlinkProvider)
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [testResult, setTestResult] = useState<string | null>(null)
   const [testing, setTesting] = useState(false)
@@ -63,6 +68,7 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }) {
     }
     setLLM(draft)
     setDemoProxyUrl(demoDraft.trim())
+    setShortlinkProvider(shortlinkDraft)
     onClose()
   }
 
@@ -93,18 +99,39 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }) {
             <span className="text-xs text-slate-400">{showAdvanced ? '收起 ▲' : '展开 ▼'}</span>
           </button>
           {showAdvanced && (
-            <div className="px-3 pb-3 pt-1 space-y-2">
-              <label className="block text-sm font-medium">🚀 公共演示模式代理地址</label>
-              <input
-                value={demoDraft}
-                onChange={(e) => setDemoDraft(e.target.value)}
-                placeholder="https://youxing-llm-proxy.你的子域.workers.dev/llm-proxy"
-                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <p className="text-xs text-slate-400">
-                一般无需填写（构建时已注入默认地址）。未配 Key 且此处有地址时走公共代理；配了 Key 时始终优先用你自己的。
-                此处修改为会话级覆盖，刷新页面后恢复默认，仅供临时调试。
-              </p>
+            <div className="px-3 pb-3 pt-1 space-y-4">
+              <div className="space-y-2">
+                <label className="block text-sm font-medium">🚀 公共演示模式代理地址</label>
+                <input
+                  value={demoDraft}
+                  onChange={(e) => setDemoDraft(e.target.value)}
+                  placeholder="https://youxing-llm-proxy.你的子域.workers.dev/llm-proxy"
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="text-xs text-slate-400">
+                  一般无需填写（构建时已注入默认地址）。未配 Key 且此处有地址时走公共代理；配了 Key 时始终优先用你自己的。
+                  此处修改为会话级覆盖，刷新页面后恢复默认，仅供临时调试。
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium">✂️ 短链接服务</label>
+                <select
+                  value={shortlinkDraft}
+                  onChange={(e) => setShortlinkDraft(e.target.value as ShortlinkProvider)}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {SHORTLINK_PROVIDERS.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-slate-400">
+                  {SHORTLINK_PROVIDERS.find((p) => p.id === shortlinkDraft)?.note}
+                  各服务对比见 docs/shortlinks.md。
+                </p>
+              </div>
             </div>
           )}
         </div>

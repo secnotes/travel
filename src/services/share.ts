@@ -1,5 +1,11 @@
 import pako from 'pako'
-import type { ItineraryPlan, PlanActivity, PlanDay, DestinationRecommendation } from '../types'
+import type {
+  ItineraryPlan,
+  PlanActivity,
+  PlanDay,
+  DestinationRecommendation,
+  PlanRequest,
+} from '../types'
 import type { DiscoverForm } from '../store'
 import { getAttraction } from '../data'
 import { addDays } from './resolver'
@@ -226,6 +232,25 @@ export async function planFromLocation(): Promise<ItineraryPlan | null> {
   const m = hash.match(/^#\/share\/(.+)$/)
   if (!m) return null
   return decodeShare(m[1])
+}
+
+/**
+ * 从分享还原的行程合成最小规划请求。
+ * 分享链接不编码原始 PlanRequest，但「修改行程」（refine 补日期）
+ * 与再次分享（startDate）依赖 request，用行程内容推断兜底。
+ */
+export function requestFromPlan(plan: ItineraryPlan): PlanRequest {
+  const first = plan.days[0]
+  return {
+    days: plan.days.length,
+    destination: first?.city ?? '',
+    origin: '',
+    startDate: first?.date,
+    budgetTier: 'comfort',
+    pace: 'moderate',
+    themes: [],
+    travelers: 1,
+  }
 }
 
 export function clearShareHash(): void {
