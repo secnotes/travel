@@ -1,5 +1,6 @@
 import type { TripContext } from '../services/resolver'
 import { rankAttractions } from '../services/resolver'
+import { cityPairFare, type FareEstimate } from '../data/fares'
 import type { ItineraryPlan, PlanRequest } from '../types'
 import { BUDGET_TIER_LABELS, PACE_LABELS, THEME_LABELS } from '../types'
 
@@ -64,7 +65,7 @@ function planSystemPrompt(): string {
 }
 
 ## 预算锚点规则
-预算必须参考提供的【城市消费锚点】，按用户档位（穷游/舒适/奢华）取对应数值；大交通按出发地与目的地的常见方式（高铁二等座/经济舱）估算，给出金额并注明是估算。`
+预算必须参考提供的【城市消费锚点】，按用户档位（穷游/舒适/奢华）取对应数值；大交通优先采用【大交通票价锚点】给出的数字（未提供时才按出发地与目的地的常见方式估算），并在 note 中注明为估算。`
 }
 
 /** 景点压缩为提示词友好的行格式 */
@@ -99,6 +100,29 @@ function climateLines(ctx: TripContext): string {
     .join('\n')
 }
 
+function fareText(f: FareEstimate): string {
+  const parts: string[] = [`- ${f.from} ↔ ${f.to}: `]
+  if (f.rail !== undefined) parts.push(`高铁二等座约 ¥${f.rail}`)
+  if (f.flight) parts.push(`经济舱约 ¥${f.flight[0]}~${f.flight[1]}`)
+  if (f.source === 'distance') parts.push('（按距离推算）')
+  return parts.join('，')
+}
+
+/** 大交通票价锚点：出发地↔目的城市 + 多城市行程的城市间接驳（限量防提示词膨胀） */
+function fareLines(ctx: TripContext): string[] {
+  const cities = ctx.match.cities.map((c) => c.city).slice(0, 4)
+  const lines: string[] = []
+  for (const city of cities) {
+    const f = cityPairFare(ctx.request.origin, city)
+    if (f) lines.push(fareText(f))
+  }
+  for (let i = 0; i < cities.length - 1 && i < 3; i++) {
+    const f = cityPairFare(cities[i], cities[i + 1])
+    if (f) lines.push(fareText(f))
+  }
+  return lines
+}
+
 export function buildPlanMessages(
   ctx: TripContext,
   extra: { weather?: string } = {},
@@ -124,6 +148,14 @@ ${attractionLines(ctx) || '（无）'}
 
 ### 城市消费锚点
 ${cityLines(ctx) || '（无）'}`)
+  }
+
+  {
+    const fares = fareLines(ctx)
+    if (fares.length > 0) {
+      sections.push(`## 大交通票价锚点（静态参考价，预算 transport 项以此为准）
+${fares.join('\n')}`)
+    }
   }
 
   if (ctx.climate.length > 0) {

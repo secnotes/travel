@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
+import { useAppStore } from '../store'
 import type { BudgetCategory, ItineraryPlan } from '../types'
 import { BUDGET_CATEGORY_LABELS } from '../types'
+import { trainSearchUrl, flightSearchUrl } from '../data/fares'
 
 const CATEGORY_ICONS: Record<BudgetCategory, string> = {
   transport: '🚄',
@@ -8,6 +10,44 @@ const CATEGORY_ICONS: Record<BudgetCategory, string> = {
   tickets: '🎫',
   meals: '🍜',
   misc: '🛍️',
+}
+
+/** 大交通项的实时票价查询链接（火车/机票，按需显示） */
+function FareLinks({ plan }: { plan: ItineraryPlan }) {
+  const request = useAppStore((s) => s.request)
+  if (!request?.origin.trim()) return null
+
+  const origin = request.origin.trim().replace(/市$/, '')
+  // 目的地取首日所在城市（多城市行程的主要到达地）
+  const dest = plan.days[0]?.city
+  if (!dest || dest === origin) return null
+  const date = request.startDate ?? plan.days[0]?.date
+
+  const train = trainSearchUrl(origin, dest, date)
+  const flight = flightSearchUrl(origin, dest, date)
+
+  return (
+    <div className="no-print flex gap-3 mt-1">
+      <a
+        href={train}
+        target="_blank"
+        rel="noreferrer"
+        className="text-[11px] text-blue-600 hover:underline"
+      >
+        🚄 查实时火车票
+      </a>
+      {flight && (
+        <a
+          href={flight}
+          target="_blank"
+          rel="noreferrer"
+          className="text-[11px] text-blue-600 hover:underline"
+        >
+          ✈️ 查实时机票
+        </a>
+      )}
+    </div>
+  )
 }
 
 /** 按类目聚合展示 + 可整体缩放（用户手动调整单价后的总览） */
@@ -57,6 +97,7 @@ export default function BudgetPanel({ plan }: { plan: ItineraryPlan }) {
                 style={{ width: `${(v.amount / max) * 100}%` }}
               />
             </div>
+            {cat === 'transport' && <FareLinks plan={plan} />}
           </div>
         ))}
       </div>

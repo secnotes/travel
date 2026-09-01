@@ -244,6 +244,14 @@ export interface RegionData {
   climate: CityClimate[]
 }
 
+/** 城市对大交通票价锚点（静态参考价，见 src/data/fares.ts） */
+export interface CityPairFare {
+  /** 高铁/动车二等座（元），无直达线路则省略 */
+  rail?: number
+  /** 经济舱常见区间（元）[低, 高] */
+  flight?: [number, number]
+}
+
 // ===== 短链接 =====
 
 /** 短链接服务商（详见 docs/shortlinks.md） */
