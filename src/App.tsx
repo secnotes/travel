@@ -111,7 +111,7 @@ export default function App() {
             </button>
             <button
               onClick={() => setSettingsOpen(true)}
-              className={`text-sm px-3 py-1.5 rounded-lg border transition-colors whitespace-nowrap ${
+              className={`text-sm px-3 h-9 rounded-lg border transition-colors whitespace-nowrap ${
                 configured
                   ? 'border-slate-200 text-slate-600 hover:bg-slate-50'
                   : 'border-amber-300 bg-amber-50 text-amber-700 font-medium'

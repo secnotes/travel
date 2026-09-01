@@ -30,6 +30,10 @@ function endpoint(baseURL: string): string {
     : `${base}/chat/completions`
 }
 
+/** 手机浏览器云加速/省流代理可能掐断长连接的提示（华为/UC/夸克等移动端常见） */
+const MOBILE_PROXY_HINT =
+  '。手机浏览器（华为/UC/夸克等）的省流或云加速模式可能中断长连接，可关闭该模式、换用 Chrome，或切换浏览器电脑模式后重试'
+
 /** 开发模式走 Vite 本地代理；生产走浏览器直连或公共演示代理 */
 const USE_DEV_PROXY = import.meta.env.DEV
 
@@ -95,7 +99,7 @@ export async function chatCompletion(
     })
   } catch (e) {
     throw new LLMError(
-      `无法连接模型服务（可能是网络问题或 CORS 限制）：${(e as Error).message}`,
+      `无法连接模型服务（可能是网络问题或 CORS 限制）：${(e as Error).message}${MOBILE_PROXY_HINT}`,
     )
   }
 
@@ -123,33 +127,38 @@ export async function chatCompletion(
   let buffer = ''
   let full = ''
 
-  for (;;) {
-    const { done, value } = await reader.read()
-    if (done) break
-    buffer += decoder.decode(value, { stream: true })
+  try {
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
 
-    const lines = buffer.split('\n')
-    buffer = lines.pop() ?? ''
-    for (const line of lines) {
-      const trimmed = line.trim()
-      if (!trimmed.startsWith('data:')) continue
-      const payload = trimmed.slice(5).trim()
-      if (payload === '[DONE]') {
-        callbacks?.onDone?.(full)
-        return full
-      }
-      try {
-        const json = JSON.parse(payload)
-        const delta: string | undefined =
-          json?.choices?.[0]?.delta?.content ?? json?.choices?.[0]?.message?.content
-        if (delta) {
-          full += delta
-          callbacks?.onDelta?.(delta)
+      const lines = buffer.split('\n')
+      buffer = lines.pop() ?? ''
+      for (const line of lines) {
+        const trimmed = line.trim()
+        if (!trimmed.startsWith('data:')) continue
+        const payload = trimmed.slice(5).trim()
+        if (payload === '[DONE]') {
+          callbacks?.onDone?.(full)
+          return full
         }
-      } catch {
-        /* 跳过无法解析的行（部分厂商的心跳/注释行） */
+        try {
+          const json = JSON.parse(payload)
+          const delta: string | undefined =
+            json?.choices?.[0]?.delta?.content ?? json?.choices?.[0]?.message?.content
+          if (delta) {
+            full += delta
+            callbacks?.onDelta?.(delta)
+          }
+        } catch {
+          /* 跳过无法解析的行（厂商心跳/注释行，以及 Worker 注入的 keepalive） */
+        }
       }
     }
+  } catch (e) {
+    // 流中途断开（如手机浏览器云加速/省流代理掐断长连接）
+    throw new LLMError(`网络连接中断：${(e as Error).message}${MOBILE_PROXY_HINT}`)
   }
 
   callbacks?.onDone?.(full)

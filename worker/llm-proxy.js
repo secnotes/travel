@@ -33,6 +33,47 @@ function endpoint(baseURL) {
     : `${base}/chat/completions`
 }
 
+/**
+ * SSE 流心跳：空闲期（如模型思考的首字等待）每 5 秒注入一行注释
+ * `: keepalive`，防止中间代理（手机浏览器云加速/省流）因空闲超时
+ * 掐断连接。仅用于 text/event-stream 响应；注释行前端解析器会
+ * 自动忽略，不影响任何逻辑。
+ */
+function withSseHeartbeat(body) {
+  const reader = body.getReader()
+  const encoder = new TextEncoder()
+  let timer = null
+
+  return new ReadableStream({
+    async start(controller) {
+      timer = setInterval(() => {
+        try {
+          controller.enqueue(encoder.encode(': keepalive\n\n'))
+        } catch {
+          /* 流已关闭，忽略 */
+        }
+      }, 5000)
+
+      try {
+        for (;;) {
+          const { done, value } = await reader.read()
+          if (done) break
+          controller.enqueue(value)
+        }
+        controller.close()
+      } catch (e) {
+        controller.error(e)
+      } finally {
+        clearInterval(timer)
+      }
+    },
+    cancel(reason) {
+      clearInterval(timer)
+      return reader.cancel(reason)
+    },
+  })
+}
+
 export default {
   async fetch(req, env) {
     const path = new URL(req.url).pathname
@@ -111,14 +152,18 @@ export default {
         body: JSON.stringify(payload),
       })
 
-      // 透传响应（含 SSE 流式）
+      // 透传响应（含 SSE 流式）；SSE 流加心跳（见 withSseHeartbeat 注释）
       const respHeaders = new Headers(corsHeaders)
       const ct = upstream.headers.get('content-type')
       if (ct) respHeaders.set('Content-Type', ct)
-      return new Response(upstream.body, {
-        status: upstream.status,
-        headers: respHeaders,
-      })
+      const isSse = Boolean(ct && ct.includes('text/event-stream'))
+      return new Response(
+        isSse && upstream.body ? withSseHeartbeat(upstream.body) : upstream.body,
+        {
+          status: upstream.status,
+          headers: respHeaders,
+        },
+      )
     } catch (e) {
       return new Response(
         JSON.stringify({ error: `上游请求失败：${e && e.message ? e.message : e}` }),
