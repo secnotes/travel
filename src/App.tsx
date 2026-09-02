@@ -32,10 +32,12 @@ export default function App() {
     ;(async () => {
       const shared = await planFromLocation()
       if (active && shared) {
-        // 分享链接不含原始请求：合成最小 request，保证「修改行程」与再次分享可用
+        // 分享链接不含原始请求：合成最小 request，保证「修改行程」与再次分享可用。
+        // 先清 hash 再 setPlan：setPlan 会 pushState 捕获当前 URL，
+        // 顺序反了会把带 hash 的 URL 压进历史，回退时 hash 又会冒出来
+        clearShareHash()
         useAppStore.setState({ request: requestFromPlan(shared) })
         setPlan(shared)
-        clearShareHash()
         return
       }
       const discover = await discoverFromLocation()
@@ -57,6 +59,27 @@ export default function App() {
   useLayoutEffect(() => {
     applyTheme(dark)
   }, [dark])
+
+  // 浏览器回退：从行程视图回到表单（进入行程时 store.setPlan 已 pushState）。
+  // 用户按回退是明确意图，不弹"放弃行程"确认。
+  useEffect(() => {
+    const onPopState = () => {
+      const s = useAppStore.getState()
+      if (s.plan && history.state?.yxView !== 'plan') {
+        useAppStore.setState({
+          request: null,
+          plan: null,
+          chat: [],
+          generating: false,
+          statusText: '',
+          streamText: '',
+          error: null,
+        })
+      }
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [])
 
   const tabs: { id: 'plan' | 'discover'; label: string }[] = [
     { id: 'plan', label: '行程规划' },

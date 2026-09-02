@@ -182,23 +182,34 @@ export const useAppStore = create<AppState>()(
       startGeneration: (request) =>
         set({ request, plan: null, chat: [], generating: true, error: null, statusText: '', streamText: '' }),
       setPlan: (plan, assistantMsg) =>
-        set((s) => ({
-          plan,
-          generating: false,
-          statusText: '',
-          streamText: '',
-          chat: assistantMsg
-            ? [...s.chat, { role: 'assistant' as const, content: assistantMsg, plan }]
-            : s.chat,
-        })),
+        set((s) => {
+          // 进入行程视图（此前无行程）时压入浏览器历史，回退键可回到表单；
+          // 多轮修改（已有行程）不重复压栈
+          if (!s.plan) history.pushState({ yxView: 'plan' }, '')
+          return {
+            plan,
+            generating: false,
+            statusText: '',
+            streamText: '',
+            chat: assistantMsg
+              ? [...s.chat, { role: 'assistant' as const, content: assistantMsg, plan }]
+              : s.chat,
+          }
+        }),
       setChat: (chat) => set({ chat }),
       appendChat: (msg) => set((s) => ({ chat: [...s.chat, msg] })),
       setStatus: (statusText) => set({ statusText }),
       setStream: (streamText) => set({ streamText }),
       setError: (error) => set({ error, generating: false, statusText: '', streamText: '' }),
       setGenerating: (generating) => set({ generating }),
-      reset: () =>
-        set({ request: null, plan: null, chat: [], generating: false, statusText: '', streamText: '', error: null }),
+      reset: () => {
+        // 若当前位于行程的历史记录上，用回退消费该记录（实际重置由 popstate 处理器完成）
+        if (history.state?.yxView === 'plan') {
+          history.back()
+          return
+        }
+        set({ request: null, plan: null, chat: [], generating: false, statusText: '', streamText: '', error: null })
+      },
 
       discoverForm: DEFAULT_DISCOVER_FORM,
       updateDiscoverForm: (patch) =>

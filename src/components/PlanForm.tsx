@@ -21,6 +21,7 @@ export default function PlanForm() {
   const setError = useAppStore((s) => s.setError)
   const setGenerating = useAppStore((s) => s.setGenerating)
   const saveToHistory = useAppStore((s) => s.saveToHistory)
+  const removeFromHistory = useAppStore((s) => s.removeFromHistory)
   const history = useAppStore((s) => s.history)
 
   // 表单草稿在 store：切换标签页不丢失
@@ -101,7 +102,7 @@ export default function PlanForm() {
   const streamText = useAppStore((s) => s.streamText)
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-3xl mx-auto">
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-slate-800">规划你的下一次旅行</h1>
         <p className="text-slate-500 mt-2">
@@ -297,21 +298,41 @@ export default function PlanForm() {
           <h2 className="text-sm font-medium text-slate-500 mb-3">最近行程</h2>
           <div className="grid gap-2 sm:grid-cols-2">
             {history.slice(0, 6).map((h) => (
-              <button
+              <div
                 key={h.id}
+                role="button"
+                tabIndex={0}
                 onClick={() => {
                   // 恢复 request 与 plan，否则「修改行程」因缺 request 无响应
                   useAppStore.setState({ request: h.request })
                   setPlan(h.plan)
                 }}
-                className="text-left bg-white border border-slate-200 rounded-xl p-4 hover:border-blue-300 hover:shadow-sm transition-all"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    useAppStore.setState({ request: h.request })
+                    setPlan(h.plan)
+                  }
+                }}
+                className="relative text-left bg-white border border-slate-200 rounded-xl p-4 hover:border-blue-300 hover:shadow-sm transition-all cursor-pointer"
               >
-                <p className="font-medium text-sm">{h.title}</p>
+                <p className="font-medium text-sm pr-6">{h.title}</p>
                 <p className="text-xs text-slate-400 mt-1">
                   {h.request.destination} · {h.request.days} 天 ·{' '}
                   {new Date(h.createdAt).toLocaleDateString('zh-CN')}
                 </p>
-              </button>
+                {/* 删除按钮：不能嵌在卡片按钮里（HTML 禁止按钮嵌套），改为独立按钮 */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (confirm(`删除行程「${h.title}」？`)) removeFromHistory(h.id)
+                  }}
+                  aria-label={`删除行程 ${h.title}`}
+                  title="删除"
+                  className="no-print absolute top-2 right-2 w-6 h-6 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors text-base leading-none"
+                >
+                  ×
+                </button>
+              </div>
             ))}
           </div>
         </div>
