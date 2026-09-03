@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAppStore } from '../store'
+import ExportMenu from './ExportMenu'
 
 interface MenuItem {
   icon: string
@@ -10,9 +11,11 @@ interface MenuItem {
 
 /**
  * 窄屏（< 640px）header 右上角操作区：
+ * - 新建行程：行程存在时显示，"+" 圆形按钮（确认后放弃当前行程）
+ * - 导出/分享：行程存在时显示，弯箭头圆形按钮（下拉与桌面端 ExportMenu 一致）
  * - 主题切换：独立按钮，点击直接切换
- * - 菜单按钮：展开导航下拉（行程规划 / 目的地发现 / 新建行程 / 设置）
- * 两个按钮等大（40px 圆形）。
+ * - 菜单按钮：展开导航下拉（行程规划 / 目的地发现 / 设置）
+ * 按钮等大（40px 圆形）。
  */
 export default function MobileActions({ onOpenSettings }: { onOpenSettings: () => void }) {
   const [open, setOpen] = useState(false)
@@ -53,22 +56,28 @@ export default function MobileActions({ onOpenSettings }: { onOpenSettings: () =
       active: tab === 'discover',
       onClick: () => setTab('discover'),
     },
-    ...(plan
-      ? [
-          {
-            icon: '➕',
-            label: '新建行程',
-            onClick: () => {
-              if (confirm('放弃当前行程并重新开始？')) reset()
-            },
-          },
-        ]
-      : []),
     { icon: '⚙️', label: '设置', onClick: onOpenSettings },
   ]
 
   return (
     <div className="sm:hidden flex items-center gap-2">
+      {/* 新建行程：行程存在时显示（确认后放弃当前行程重新开始） */}
+      {plan && (
+        <button
+          onClick={() => {
+            if (confirm('放弃当前行程并重新开始？')) reset()
+          }}
+          aria-label="新建行程"
+          title="新建行程"
+          className="w-10 h-10 rounded-full bg-white text-slate-700 shadow-md border border-slate-200 flex items-center justify-center active:scale-95 transition-transform"
+        >
+          <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5" aria-hidden>
+            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+          </svg>
+        </button>
+      )}
+      {/* 导出/分享：行程存在时显示（行程卡片内的文字按钮仅 sm+ 屏展示） */}
+      {plan && <ExportMenu plan={plan} variant="icon" />}
       {/* 主题切换：独立按钮，点击直接切换 */}
       <button
         onClick={toggleTheme}

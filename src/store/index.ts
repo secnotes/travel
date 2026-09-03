@@ -51,6 +51,19 @@ function todayStr(): string {
   return `${d.getFullYear()}-${m}-${day}`
 }
 
+/**
+ * 瞬时回到顶部。直接 window.scrollTo 会走 CSS 的 scroll-behavior:smooth
+ * 变成动画，动画可能被随后的视图切换（文档高度骤变）打断而停在半路，
+ * 这里临时用内联样式覆盖为 auto，保证一步到位。
+ */
+function scrollTopInstant() {
+  const root = document.documentElement
+  const prev = root.style.scrollBehavior
+  root.style.scrollBehavior = 'auto'
+  window.scrollTo(0, 0)
+  root.style.scrollBehavior = prev
+}
+
 const DEFAULT_DISCOVER_FORM: DiscoverForm = {
   startDate: todayStr(),
   days: 4,
@@ -185,7 +198,11 @@ export const useAppStore = create<AppState>()(
         set((s) => {
           // 进入行程视图（此前无行程）时压入浏览器历史，回退键可回到表单；
           // 多轮修改（已有行程）不重复压栈
-          if (!s.plan) history.pushState({ yxView: 'plan' }, '')
+          if (!s.plan) {
+            history.pushState({ yxView: 'plan' }, '')
+            // 从表单切到行程视图时置顶（表单页可能停在很深的滚动位置）
+            scrollTopInstant()
+          }
           return {
             plan,
             generating: false,
@@ -203,12 +220,31 @@ export const useAppStore = create<AppState>()(
       setError: (error) => set({ error, generating: false, statusText: '', streamText: '' }),
       setGenerating: (generating) => set({ generating }),
       reset: () => {
-        // 若当前位于行程的历史记录上，用回退消费该记录（实际重置由 popstate 处理器完成）
-        if (history.state?.yxView === 'plan') {
-          history.back()
-          return
-        }
+        // 先同步重置状态，确保任何环境下点击都立即生效。
+        // 此前依赖 history.back() 触发 popstate 处理器间接重置，
+        // 在部分移动端浏览器/复杂历史栈（如连续两个行程记录条目）下
+        // back 不触发 popstate，导致点击「新建行程」无反应。
+        const onPlanEntry = history.state?.yxView === 'plan'
         set({ request: null, plan: null, chat: [], generating: false, statusText: '', streamText: '', error: null })
+        // 回到表单后置顶（视口可能停在行程页很深的滚动位置）
+        scrollTopInstant()
+        if (onPlanEntry) {
+          // 回退消费行程历史记录；popstate 处理器见 plan 已清空，不会重复处理。
+          // back() 会恢复上一条目记录的滚动位置（"回到上次浏览位置"的来源）：
+          // 临时关闭自动恢复，且个别移动浏览器不遵守 manual、恢复时机也可能
+          // 在 popstate 前后漂移，故在 popstate 即时/后续两帧/短超时多次压制，
+          // 保证最终停在顶部（settle 幂等，重复调用无害）
+          const prev = history.scrollRestoration
+          history.scrollRestoration = 'manual'
+          history.back()
+          const settle = () => {
+            scrollTopInstant()
+            requestAnimationFrame(() => requestAnimationFrame(scrollTopInstant))
+            history.scrollRestoration = prev
+          }
+          window.addEventListener('popstate', settle, { once: true })
+          setTimeout(settle, 300)
+        }
       },
 
       discoverForm: DEFAULT_DISCOVER_FORM,

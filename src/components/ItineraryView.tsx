@@ -22,12 +22,14 @@ export default function ItineraryView() {
     <div className="space-y-6">
       {/* 概览卡片 */}
       <section className="print-full bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
+        {/* 窄屏上下堆叠：按钮在侧会把标题/概述挤窄（按钮下方留大片空白） */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
             <h1 className="text-2xl font-bold text-slate-800">{plan.title}</h1>
             <p className="text-slate-500 mt-2 leading-relaxed">{plan.overview}</p>
           </div>
-          <div className="no-print shrink-0">
+          {/* 手机端导出入口移至头部弯箭头图标按钮（见 MobileActions） */}
+          <div className="no-print shrink-0 hidden sm:block">
             <ExportMenu plan={plan} />
           </div>
         </div>
