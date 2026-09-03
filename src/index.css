@@ -24,7 +24,8 @@ body {
   height: 26px;
   border-radius: 9999px;
   color: #fff;
-  font-size: 12px;
+  /* "D10" 等 2-3 字符需略小字号才能放进 26px 圆圈 */
+  font-size: 11px;
   font-weight: 600;
   border: 2px solid #fff;
   box-shadow: 0 1px 4px rgb(0 0 0 / 0.4);

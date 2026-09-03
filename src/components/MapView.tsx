@@ -27,10 +27,10 @@ function colorOfDay(day: number): string {
   return DAY_COLORS[(day - 1) % DAY_COLORS.length]
 }
 
-function dayIcon(day: number, seq: number): L.DivIcon {
+function dayIcon(day: number): L.DivIcon {
   return L.divIcon({
     className: '',
-    html: `<div class="day-marker" style="background:${colorOfDay(day)}">${seq}</div>`,
+    html: `<div class="day-marker" style="background:${colorOfDay(day)}">D${day}</div>`,
     iconSize: [26, 26],
     iconAnchor: [13, 13],
   })
@@ -130,12 +130,12 @@ export default function MapView({ plan }: { plan: ItineraryPlan }) {
             <Marker
               key={`${p.day}-${p.seq}-${i}`}
               position={[p.coords![1], p.coords![0]]}
-              icon={dayIcon(p.day, p.seq)}
+              icon={dayIcon(p.day)}
             >
               <Popup>
                 <div className="text-sm">
                   <p className="font-bold">
-                    D{p.day} · {p.name}
+                    D{p.day} 第{p.seq}站 · {p.name}
                   </p>
                   <p className="text-slate-500">
                     {p.startTime} - {p.endTime}
