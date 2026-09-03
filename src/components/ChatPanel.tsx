@@ -16,6 +16,8 @@ export default function ChatPanel() {
   const request = useAppStore((s) => s.request)
   const chat = useAppStore((s) => s.chat)
   const generating = useAppStore((s) => s.generating)
+  const statusText = useAppStore((s) => s.statusText)
+  const error = useAppStore((s) => s.error)
   const appendChat = useAppStore((s) => s.appendChat)
   const setPlan = useAppStore((s) => s.setPlan)
   const setError = useAppStore((s) => s.setError)
@@ -88,8 +90,11 @@ export default function ChatPanel() {
         ))}
         {generating && (
           <p className="text-xs text-slate-400 animate-pulse">
-            {useAppStore.getState().statusText || '思考中…'}
+            {statusText || '思考中…'}
           </p>
+        )}
+        {error && (
+          <p className="text-sm text-red-600 bg-red-50 rounded-lg p-3">{error}</p>
         )}
       </div>
 
