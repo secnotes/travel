@@ -58,7 +58,8 @@ export default function ChatPanel() {
         ref={listRef}
         className="flex-1 overflow-y-auto max-h-56 px-4 py-3 space-y-2.5"
       >
-        {chat.length === 0 && (
+        {/* 首条用户反馈前始终展示快捷改法（生成行程后的助手提示语不顶掉它们） */}
+        {!chat.some((m) => m.role === 'user') && (
           <div className="flex flex-wrap gap-1.5">
             {QUICK_PROMPTS.map((q) => (
               <button
