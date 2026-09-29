@@ -79,19 +79,21 @@ export default function ExportMenu({
 
   async function copyShareShortLink() {
     const url = shareUrl(plan, request?.startDate)
-    if (url.length > 8000) {
-      await copy(planToMarkdown(plan), 'Markdown')
-      alert('行程内容较长，已改为复制 Markdown 文本')
-      setOpen(false)
-      return
-    }
-    // 优先生成短链（自有 Worker）；不可用时降级为长链并明确告知
+    // 长链恰恰是用户最需要缩短的场景，不应按长度预先放弃。
+    // 直接尝试生成短链：worker 走 POST body 无 URL 长度限制；
+    // 第三方 GET 服务超长被拒时 shortenUrl 已会返回 null，统一在此降级。
     const short = await shortenUrl(url)
     if (short) {
       await copy(short, '短链接')
     } else {
-      await copy(url, '链接')
-      alert('短链接服务不可用（未部署演示 Worker 或生成超时），已复制长链接')
+      // 短链不可用：超长链接在聊天软件中会被截断，降级为 Markdown 文本更实用
+      if (url.length > 8000) {
+        await copy(planToMarkdown(plan), 'Markdown')
+        alert('短链接服务不可用且行程内容较长，已改为复制 Markdown 文本')
+      } else {
+        await copy(url, '链接')
+        alert('短链接服务不可用（未部署演示 Worker 或生成超时），已复制长链接')
+      }
     }
     setOpen(false)
   }
